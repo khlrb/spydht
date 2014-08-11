@@ -157,9 +157,14 @@ class DHT(object):
             return result["content"]
         raise KeyError
         
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, content):
         hashed_key = hash_function(key)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
+	value = {
+			"content": content,
+			"key": my_key.verify_key.encode(encoder=nacl.encoding.HexEncoder),
+			"signature": my_key.sign(content)
+		}
         if not nearest_nodes:
             self.data[hashed_key] = value
         for node in nearest_nodes:
