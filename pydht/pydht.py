@@ -5,6 +5,8 @@ import SocketServer
 import threading
 import time
 
+import nacl.signing
+
 from .bucketset import BucketSet
 from .hashing import hash_function, random_id
 from .peer import Peer
@@ -14,6 +16,7 @@ k = 20
 alpha = 3
 id_bits = 128
 iteration_sleep = 1
+my_key = None
 
 class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
@@ -82,6 +85,9 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         
     def handle_store(self, message):
         key = message["id"]
+
+	nacl.signing.VerifyKey(message["value"]["key"], encoder=nacl.encoding.HexEncoder)
+
         self.server.dht.data[key] = message["value"]
 
 
@@ -91,8 +97,9 @@ class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
         self.send_lock = threading.Lock()
 
 class DHT(object):
-    def __init__(self, host, port, id=None, boot_host=None, boot_port=None):
-        if not id:
+    def __init__(self, host, port, key, id=None, boot_host=None, boot_port=None):
+        my_key = key
+	if not id:
             id = random_id()
         self.peer = Peer(unicode(host), port, id)
         self.data = {}
@@ -147,7 +154,7 @@ class DHT(object):
             return self.data[hashed_key]
         result = self.iterative_find_value(hashed_key)
         if result:
-            return result
+            return result["content"]
         raise KeyError
         
     def __setitem__(self, key, value):
