@@ -24,10 +24,10 @@ dht1 = DHT(host1, port1, key1)
 key2 = nacl.signing.SigningKey.generate()
 
 host2, port2 = 'localhost', 3001
-dht2 = DHT(host2, port2, boot_host=host1, boot_port=port1)
+dht2 = DHT(host2, port2, key2, boot_host=host1, boot_port=port1)
 
-dht1["my_key"] = [u"My", u"json-serializable", u"Object"]
+dht1["test"] = [u"My", u"json-serializable", u"Object"]
 
 
-print dht2["my_key"]
+print dht2["test"]
 ```
