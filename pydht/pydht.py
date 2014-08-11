@@ -85,7 +85,7 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
     def handle_store(self, message):
         key = message["id"]
 
-	nacl.signing.VerifyKey(message["value"]["key"], encoder=nacl.encoding.HexEncoder)
+	nacl.signing.VerifyKey(message["value"]["key"], encoder=nacl.encoding.Base64Encoder).verify(nacl.encoding.Base64Encoder.decode(message["value"]["signature"]))
 
         self.server.dht.data[key] = message["value"]
 
@@ -160,9 +160,9 @@ class DHT(object):
         hashed_key = hash_function(key)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
 	value = {
-			"content": content,
-			"key": self.my_key.verify_key.encode(encoder=nacl.encoding.HexEncoder),
-			"signature": self.my_key.sign(content)
+			"content": str(content),
+			"key": self.my_key.verify_key.encode(encoder=nacl.encoding.Base64Encoder),
+			"signature": nacl.encoding.Base64Encoder.encode(self.my_key.sign(content))
 		}
         if not nearest_nodes:
             self.data[hashed_key] = value
