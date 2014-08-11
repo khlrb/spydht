@@ -16,7 +16,6 @@ k = 20
 alpha = 3
 id_bits = 128
 iteration_sleep = 1
-my_key = None
 
 class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
@@ -98,7 +97,7 @@ class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
 
 class DHT(object):
     def __init__(self, host, port, key, id=None, boot_host=None, boot_port=None):
-        my_key = key
+        self.my_key = key
 	if not id:
             id = random_id()
         self.peer = Peer(unicode(host), port, id)
@@ -162,8 +161,8 @@ class DHT(object):
         nearest_nodes = self.iterative_find_nodes(hashed_key)
 	value = {
 			"content": content,
-			"key": my_key.verify_key.encode(encoder=nacl.encoding.HexEncoder),
-			"signature": my_key.sign(content)
+			"key": self.my_key.verify_key.encode(encoder=nacl.encoding.HexEncoder),
+			"signature": self.my_key.sign(content)
 		}
         if not nearest_nodes:
             self.data[hashed_key] = value
