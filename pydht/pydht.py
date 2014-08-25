@@ -37,6 +37,8 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
                 self.handle_found_value(message)
             elif message_type == "store":
                 self.handle_store(message)
+            elif message_type == "push":
+                self.handle_push(message)
         except KeyError, ValueError:
             pass
         client_host, client_port = self.client_address
@@ -89,6 +91,8 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
         self.server.dht.data[key] = message["value"]
 
+    def handle_push(self, message):
+        pass
 
 class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
     def __init__(self, host_address, handler_cls):
