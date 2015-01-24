@@ -8,6 +8,8 @@ Python implementation of the Kademlia DHT data store.
 
 Useful for distributing a key-value store in a decentralized manner.
 
+Nodes only update values, if they're signed with the same key.
+
 Example: a two node DHT
 
 ```python
