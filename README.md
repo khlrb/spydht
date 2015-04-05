@@ -1,4 +1,4 @@
-pydht
+spydht
 ==========
 
 forked from [isaaczafuta/pydht](https://github.com/isaaczafuta/pydht)

@@ -1,4 +1,4 @@
-from pydht.pydht import DHT
+from spydht.spydht import DHT
 
 import nacl.signing
 
