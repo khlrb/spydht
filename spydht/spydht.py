@@ -167,13 +167,14 @@ class DHT(object):
             boot_peer = Peer(boot_host, boot_port, 0)
             self.iterative_find_nodes(self.peer.id, boot_peer=boot_peer)
                     
-    def __getitem__(self, key):
+    def __getitem__(self, key, bypass=0):
         hashed_key = hash_function(key.encode("ascii"))
         if hashed_key in self.data:
-            return self.data[hashed_key]
+            return self.data[hashed_key]["content"]
         result = self.iterative_find_value(hashed_key)
         if result:
             return result["content"]
+
         raise KeyError
         
     def __setitem__(self, key, content):
