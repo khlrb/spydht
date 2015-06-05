@@ -20,6 +20,11 @@ class Peer(object):
     def _sendmessage(self, message, sock=None, peer_id=None, lock=None):
         message["peer_id"] = peer_id # more like sender_id
         encoded = json.dumps(message)
+        try:
+            encoded = str(encoded).encode("ascii")
+        except:
+            return
+
         if sock:
             if lock:
                 with lock:

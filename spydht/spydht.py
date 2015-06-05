@@ -1,7 +1,11 @@
 import json
 import random
 import socket
-import SocketServer
+try:
+    import socketserver
+except:
+    import SocketServer
+    socketserver = SocketServer
 import threading
 import time
 
@@ -17,11 +21,11 @@ alpha = 3
 id_bits = 128
 iteration_sleep = 1
 
-class DHTRequestHandler(SocketServer.BaseRequestHandler):
+class DHTRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
-            message = json.loads(self.request[0].strip())
+            message = json.loads(self.request[0].decode("utf-8").strip())
             message_type = message["message_type"]
             if message_type == "ping":
                 self.handle_ping(message)
@@ -39,8 +43,9 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
                 self.handle_store(message)
             elif message_type == "push":
                 self.handle_push(message)
-        except KeyError, ValueError:
-            pass
+        except:
+            return
+
         client_host, client_port = self.client_address
         peer_id = message["peer_id"]
         new_peer = Peer(client_host, client_port, peer_id)
@@ -87,24 +92,35 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
     def handle_store(self, message):
         key = message["id"]
 
-	nacl.signing.VerifyKey(message["value"]["key"], encoder=nacl.encoding.Base64Encoder).verify(nacl.encoding.Base64Encoder.decode(message["value"]["signature"]))
+        #Verify updated message is signed with same key.
+        if key in self.server.dht.data:
+            #Signature is valid.
+            #(Raises exception if not.)
+            ret = nacl.signing.VerifyKey(self.server.dht.data[key]["key"], encoder=nacl.encoding.Base64Encoder).verify(nacl.encoding.Base64Encoder.decode(message["value"]["signature"]))
+            if type(ret) == bytes:
+                ret = ret.decode("utf-8")
+
+            #Check that the signature corresponds to this message.
+            message_content = message["value"]["content"]
+            if ret != message_content:
+                return
 
         self.server.dht.data[key] = message["value"]
 
     def handle_push(self, message):
         pass
 
-class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
+class DHTServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     def __init__(self, host_address, handler_cls):
-        SocketServer.UDPServer.__init__(self, host_address, handler_cls)
+        socketserver.UDPServer.__init__(self, host_address, handler_cls)
         self.send_lock = threading.Lock()
 
 class DHT(object):
     def __init__(self, host, port, key, id=None, boot_host=None, boot_port=None):
         self.my_key = key
-	if not id:
+        if not id:
             id = random_id()
-        self.peer = Peer(unicode(host), port, id)
+        self.peer = Peer(str(host), port, id)
         self.data = {}
         self.buckets = BucketSet(k, id_bits, self.peer.id)
         self.rpc_ids = {} # should probably have a lock for this
@@ -113,7 +129,7 @@ class DHT(object):
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
-        self.bootstrap(unicode(boot_host), boot_port)
+        self.bootstrap(str(boot_host), boot_port)
     
     def iterative_find_nodes(self, key, boot_peer=None):
         shortlist = Shortlist(k, key)
@@ -151,23 +167,26 @@ class DHT(object):
             boot_peer = Peer(boot_host, boot_port, 0)
             self.iterative_find_nodes(self.peer.id, boot_peer=boot_peer)
                     
-    def __getitem__(self, key):
-        hashed_key = hash_function(key)
+    def __getitem__(self, key, bypass=0):
+        hashed_key = hash_function(key.encode("ascii"))
         if hashed_key in self.data:
-            return self.data[hashed_key]
+            return self.data[hashed_key]["content"]
         result = self.iterative_find_value(hashed_key)
         if result:
             return result["content"]
+
         raise KeyError
         
     def __setitem__(self, key, content):
-        hashed_key = hash_function(key)
+        content = str(content)
+        hashed_key = hash_function(key.encode("ascii"))
         nearest_nodes = self.iterative_find_nodes(hashed_key)
-	value = {
-			"content": str(content),
-			"key": self.my_key.verify_key.encode(encoder=nacl.encoding.Base64Encoder),
-			"signature": nacl.encoding.Base64Encoder.encode(self.my_key.sign(content))
-		}
+        value = {
+            "content": content,
+            "key": self.my_key.verify_key.encode(encoder=nacl.encoding.Base64Encoder).decode("utf-8"),
+            "signature": nacl.encoding.Base64Encoder.encode(self.my_key.sign(content.encode("ascii"))).decode("utf-8")
+        }
+
         if not nearest_nodes:
             self.data[hashed_key] = value
         for node in nearest_nodes:
